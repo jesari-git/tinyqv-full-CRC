@@ -58,7 +58,7 @@ module tt_um_tqv_jesari_CRC (
     // List all unused inputs to prevent warnings
     // data_read_n is unused as none of our behaviour depends on whether
     // registers are being read.
-    wire _unused = &{ui_in[7:0], address[5:4], 1'b0};
+    wire _unused = &{ui_in[7:0], address[5:4], rst_n, 1'b0};
 
 endmodule
 
