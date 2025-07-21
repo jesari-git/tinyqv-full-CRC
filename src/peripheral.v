@@ -42,27 +42,36 @@ module tt_um_tqv_jesari_CRC (
 	// peripheral instance
 	wire irqrx, irqrxerr, irqtx, can_tx, can_rx;
 	CRC CRC0 (
-		.clk(clk), .reset(~rst_n),
+		.clk(clk), 
 		.cs(cs), 
 		.rs(address[3:2]),
 		.wrl(bsel),
 		.d(data_in),
 		.q(data_out)
 	);
+	
+	// fixed outputs
 	assign data_ready = 1'b1;
+    assign uo_out = 8'hZZ; 
+    assign user_interrupt = 1'b0;
 	
     // List all unused inputs to prevent warnings
     // data_read_n is unused as none of our behaviour depends on whether
     // registers are being read.
     wire _unused = &{ui_in[7:0], address[5:4], 1'b0};
-    
-    assign uo_out = 8'hZZ;
 
 endmodule
 
+///////////////////////////////////////
+///////////////////////////////////////
+// CRC accelerator
+// J. Arias (2022)
+// original version for laRVa cores...
+///////////////////////////////////////
+///////////////////////////////////////
+
 module CRC (
 	input clk,
-	input reset,
 	input cs,		// Chip Select
 	input [1:0]rs,	// register select
 	input [3:0]wrl,	// Write Lanes
@@ -102,10 +111,9 @@ always @(posedge clk)
 	 	{d[7:0],d[15:8],d[23:16],d[31:24]} ):
 	  {sh[30:0],1'bx};
 // Bit counter. Starts with 31, 15 or 7, depending on write lanes.
-always @(posedge clk or posedge reset)
-	if (reset) cnt<=0; else
-		if (datawr|reflectwr) cnt<={1'b0,wrl[3],wrl[1],wrl[0],wrl[0],wrl[0]};
-		else if (~tc) cnt<=cnt-1;
+always @(posedge clk)
+	if (datawr|reflectwr) cnt<={1'b0,wrl[3],wrl[1],wrl[0],wrl[0],wrl[0]};
+	else if (~tc) cnt<=cnt-1;
 wire tc=cnt[5]; // Terminal Count: count until -1 (MSB==1)
 
 // Polynomial register (MSB justified)
