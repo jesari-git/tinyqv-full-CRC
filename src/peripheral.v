@@ -55,6 +55,8 @@ module tt_um_tqv_jesari_CRC (
     // data_read_n is unused as none of our behaviour depends on whether
     // registers are being read.
     wire _unused = &{ui_in[7:0], address[5:4], 1'b0};
+    
+    assign uo_out = 8'hZZ;
 
 endmodule
 
