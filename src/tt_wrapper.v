@@ -36,9 +36,9 @@ module tt_um_tqv_peripheral_harness (
   /* verilator lint_on SYNCASYNCNET */
   always @(negedge clk) rst_reg_n <= rst_n;
 
-  // The peripheral under test.
-  // **** Change the module name from tqvp_example to match your peripheral. ****
-  tqvp_example user_peripheral(
+  // The peripheral under test - change the module name here
+  // to match your preipheral.
+  tt_um_tqv_jesari_CRC user_peripheral(
     .clk(clk),
     .rst_n(rst_reg_n),
     .ui_in(ui_in_sync),
@@ -49,7 +49,7 @@ module tt_um_tqv_peripheral_harness (
     .data_read_n(data_read_n),
     .data_out(data_out),
     .data_ready(data_ready),
-    .user_interrupt(uio_out[0])
+    .user_interrupt(user_interrupt)
   );
 
   // SPI data indications

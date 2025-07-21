@@ -5,10 +5,7 @@
 
 `default_nettype none
 
-// Change the name of this module to something that reflects its functionality and includes your name for uniqueness
-// For example tqvp_yourname_spi for an SPI peripheral.
-// Then edit tt_wrapper.v line 41 and change tqvp_example to your chosen module name.
-module tqvp_example (
+module tt_um_tqv_jesari_CRC (
     input         clk,          // Clock - the TinyQV project clock is normally set to 64MHz.
     input         rst_n,        // Reset_n - low to reset.
 
@@ -30,57 +27,110 @@ module tqvp_example (
 
     output        user_interrupt  // Dedicated interrupt request for this peripheral
 );
+	// changing the bus interface to LaRVa's...
 
-    // Implement a 32-bit read/write register at address 0
-    reg [31:0] example_data;
-    always @(posedge clk) begin
-        if (!rst_n) begin
-            example_data <= 0;
-        end else begin
-            if (address == 6'h0) begin
-                if (data_write_n != 2'b11)              example_data[7:0]   <= data_in[7:0];
-                if (data_write_n[1] != data_write_n[0]) example_data[15:8]  <= data_in[15:8];
-                if (data_write_n == 2'b10)              example_data[31:16] <= data_in[31:16];
-            end
-        end
-    end
+	// Chip select: only 32-bit wide reads & writes allowed
+	wire cs = (address[1:0]==0) & ((data_write_n!=2'b11) | (data_read_n!=2'b11));
 
-    // The bottom 8 bits of the stored data are added to ui_in and output to uo_out.
-    assign uo_out = example_data[7:0] + ui_in;
+	// write lanes
+	wire [3:0]bsel;
+	assign bsel[0] = (data_write_n!=2'b11);
+	assign bsel[1] = (data_write_n==2'b01) | (data_write_n==2'b10);
+	assign bsel[2] = (data_write_n==2'b10);
+	assign bsel[3] = bsel[2];
 
-    // Address 0 reads the example data register.  
-    // Address 4 reads ui_in
-    // All other addresses read 0.
-    assign data_out = (address == 6'h0) ? example_data :
-                      (address == 6'h4) ? {24'h0, ui_in} :
-                      32'h0;
-
-    // All reads complete in 1 clock
-    assign data_ready = 1;
-    
-    // User interrupt is generated on rising edge of ui_in[6], and cleared by writing a 1 to the low bit of address 8.
-    reg example_interrupt;
-    reg last_ui_in_6;
-
-    always @(posedge clk) begin
-        if (!rst_n) begin
-            example_interrupt <= 0;
-        end
-
-        if (ui_in[6] && !last_ui_in_6) begin
-            example_interrupt <= 1;
-        end else if (address == 6'h8 && data_write_n != 2'b11 && data_in[0]) begin
-            example_interrupt <= 0;
-        end
-
-        last_ui_in_6 <= ui_in[6];
-    end
-
-    assign user_interrupt = example_interrupt;
-
+	// peripheral instance
+	wire irqrx, irqrxerr, irqtx, can_tx, can_rx;
+	CRC CRC0 (
+		.clk(clk), .reset(~rst_n),
+		.cs(cs), 
+		.rs(address[3:2]),
+		.wrl(bsel),
+		.d(data_in),
+		.q(data_out)
+	);
+	assign data_ready = 1'b1;
+	
     // List all unused inputs to prevent warnings
     // data_read_n is unused as none of our behaviour depends on whether
     // registers are being read.
-    wire _unused = &{data_read_n, 1'b0};
+    wire _unused = &{ui_in[7:0], address[5:4], 1'b0};
 
 endmodule
+
+module CRC (
+	input clk,
+	input reset,
+	input cs,		// Chip Select
+	input [1:0]rs,	// register select
+	input [3:0]wrl,	// Write Lanes
+	input [31:0]d,
+	output [31:0]q
+);
+
+///////////////////////////////////////
+// registers
+
+reg [31:0]sh;		// Data shift register
+reg [31:0]crc;	// CRC register
+reg [31:0]poly;	// CRC polynomial
+reg [ 5:0]cnt;	// Bit counter
+
+///////////////////////////////////////
+// WRITE registers
+//  RS    REG
+//---------------
+//  00    CRC  (32 bits, MSB justified)
+//  01    POLY (32 bits, MSB justified)
+//  10    DATA (32, 16, or 8 bits)
+//  11    REFL (bits reflected, 32, 16, or 8 bits)
+
+wire wr=cs & (wrl!=0);	// Write something signal
+
+// Data register (LSB byte first for 32 and 16 bit writes)
+// Don't care values in LSBs for 16-bit and 8-bit writes
+wire datawr=    wr & (rs==2'b10);
+wire reflectwr= wr & (rs==2'b11);
+always @(posedge clk)
+	 sh<=(datawr|reflectwr) ? (reflectwr ? 
+	 	{ d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
+	 	  d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15],
+	 	  d[16],d[17],d[18],d[19],d[20],d[21],d[22],d[23],
+	 	  d[24],d[25],d[26],d[27],d[28],d[29],d[30],d[31] }:
+	 	{d[7:0],d[15:8],d[23:16],d[31:24]} ):
+	  {sh[30:0],1'bx};
+// Bit counter. Starts with 31, 15 or 7, depending on write lanes.
+always @(posedge clk or posedge reset)
+	if (reset) cnt<=0; else
+		if (datawr|reflectwr) cnt<={1'b0,wrl[3],wrl[1],wrl[0],wrl[0],wrl[0]};
+		else if (~tc) cnt<=cnt-1;
+wire tc=cnt[5]; // Terminal Count: count until -1 (MSB==1)
+
+// Polynomial register (MSB justified)
+always @(posedge clk)
+	if (wr&(rs==2'b01)) poly<=d;
+
+// CRC
+always @(posedge clk)
+	if (wr&(rs==2'b00)) crc<=d;	// Initial value (MSB justified)
+	else if (~tc) crc<= {crc[30:0],1'b0}^((crc[31]^sh[31])? poly : 0); 
+
+///////////////////////////////////////
+// READ registers
+//  RS    REG
+//---------------
+//  00    CRC  (MSB justified)
+//  01    STAT (bit 0: ready if 1, busy if 0)
+//  1x    CRC  (bits reflected, LSB justified)
+
+assign q= rs[1]? 
+		{ crc[ 0],crc[ 1],crc[ 2],crc[ 3],crc[ 4],crc[ 5],crc[ 6],crc[ 7],
+		  crc[ 8],crc[ 9],crc[10],crc[11],crc[12],crc[13],crc[14],crc[15],
+		  crc[16],crc[17],crc[18],crc[19],crc[20],crc[21],crc[22],crc[23],
+		  crc[24],crc[25],crc[26],crc[27],crc[28],crc[29],crc[30],crc[31]} :
+		(rs[0] ? {31'b0,tc} : crc); 
+
+endmodule
+
+
+
