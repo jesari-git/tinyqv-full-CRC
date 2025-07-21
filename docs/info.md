@@ -9,20 +9,34 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## What it does
 
-Explain what your peripheral does and how it works
+This peripheral is a CRC accelerator. 
 
 ## Register map
 
-Document the registers that are used to interact with your peripheral
+Document the registers that are used to interact with your peripheral.
+All registers are 32-bit wide and are located at addresses multiple of 4:
 
-| Address | Name  | Access | Description                                                         |
-|---------|-------|--------|---------------------------------------------------------------------|
-| 0x00    | DATA  | R/W    | A word of data                                                      |
+| Address | Name     | Access | size | Description                                          |
+|---------|----------|--------|------|------------------------------------------------------|
+| 0x00    | CRC      |  R/W   | word | Current CRC value, right aligned                     |
+|---------|----------|--------|------|------------------------------------------------------|
+| 0x04    | POLY     |  R/W   | word | CRC polynomial, right aligned, LSBs padded with 0s   |
+|---------|----------|--------|------|------------------------------------------------------|
+| 0x08    | DATA     |   W    | word | Adds 4 bytes to CRC (little endian)                  |
+|         |          |   W    | half | Adds 2 bytes to CRC (little endian)                  |
+|         |          |   W    | byte | Adds 1 byte to CRC                                   |
+|---------|----------|--------|------|------------------------------------------------------|
+| 0x0C    | CRCREFL  |   R    | word | Current CRC "reflected" (LSBs and MSBs interchanged) |
+|         | DATAREFL |   W    | word | Adds 4 "reflected" bytes to CRC                      |
+|         |          |   W    | half | Adds 2 "reflected" bytes to CRC                      |
+|         |          |   W    | byte | Adds 1 "reflected" byte to CRC                       |
+|---------|----------|--------|------|------------------------------------------------------|
 
 ## How to test
 
-Explain how to use your project
+
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+No external hardware is required
+
