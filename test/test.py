@@ -37,7 +37,7 @@ async def test_project(dut):
     await ClockCycles(dut.clk, 33)
     await tqv.write_byte_reg(0x8, 0x55)   # data (8 bits)
     await ClockCycles(dut.clk, 9)
-    #assert await tqv.read_word_reg(0) == 0x49AE0000 # CRC result
+    assert await tqv.read_word_reg(0) == 0x49AE0000 # CRC result
 
     # Wait for two clock cycles to see the output values, because ui_in is synchronized over two clocks,
     # and a further clock is required for the output to propagate.
