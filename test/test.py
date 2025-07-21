@@ -35,7 +35,7 @@ async def test_project(dut):
     await tqv.write_word_reg(0x0, 0x0)  	# Initial value
     await tqv.write_word_reg(0x8, 0x125555ff)  	# data (32 bits)
     await ClockCycles(dut.clk, 33)
-    await tqv.write_byte_reg(0x8, 0x00100108)   # data (8 bits)
+    await tqv.write_byte_reg(0x8, 0x55)   # data (8 bits)
     await ClockCycles(dut.clk, 9)
     #assert await tqv.read_word_reg(0) == 0x49AE0000 # CRC result
 
