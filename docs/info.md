@@ -22,23 +22,23 @@ And, for the programmer's model it has the following registers:
 
 ## Register map
 
-| Address | Name     | Access | size | Description                                          |
-|---------|----------|--------|------|------------------------------------------------------|
-| 0x00    | CRC      |  R/W   | word | Current CRC value, right aligned                     |
-|---------|----------|--------|------|------------------------------------------------------|
-| 0x04    | STAT     |   R    | any  | Bit #0: CRC ready if one                             |
-|         | POLY     |   W    | word | CRC polynomial, right aligned, LSBs padded with 0s   |
-|---------|----------|--------|------|------------------------------------------------------|
-| 0x08    | CRCREFL  |   R    | word | Current CRC "reflected" (LSBs and MSBs interchanged) |
-|         | DATA     |   W    | word | Adds 4 bytes to CRC (little endian)                  |
-|         |          |   W    | half | Adds 2 bytes to CRC (little endian)                  |
-|         |          |   W    | byte | Adds 1 byte to CRC                                   |
-|---------|----------|--------|------|------------------------------------------------------|
-| 0x0C    | CRCREFL  |   R    | word | Current CRC "reflected" (LSBs and MSBs interchanged) |
-|         | DATAREFL |   W    | word | Adds 4 "reflected" bytes to CRC                      |
-|         |          |   W    | half | Adds 2 "reflected" bytes to CRC                      |
-|         |          |   W    | byte | Adds 1 "reflected" byte to CRC                       |
-|---------|----------|--------|------|------------------------------------------------------|
+| Address | Name     | Access | size | Description                                         |
+|---------|----------|--------|------|-----------------------------------------------------|
+| 0x00    | CRC      |  R/W   | word | Current CRC value, MSB aligned, LSBs padded with 0s |
+|---------|----------|--------|------|-----------------------------------------------------|
+| 0x04    | STAT     |   R    | any  | Bit #0: CRC ready if one                            |
+|         | POLY     |   W    | word | CRC polynomial, MSB aligned, LSBs padded with 0s    |
+|---------|----------|--------|------|-----------------------------------------------------|
+| 0x08    | CRCREFL  |   R    | word | Current CRC "reflected" (LSBs <--> MSBs)            |
+|         | DATA     |   W    | word | Adds 4 bytes to CRC (little endian)                 |
+|         |          |   W    | half | Adds 2 bytes to CRC (little endian)                 |
+|         |          |   W    | byte | Adds 1 byte to CRC                                  |
+|---------|----------|--------|------|-----------------------------------------------------|
+| 0x0C    | CRCREFL  |   R    | word | Current CRC "reflected" (LSBs <--> MSBs)            |
+|         | DATAREFL |   W    | word | Adds 4 "reflected" bytes to CRC                     |
+|         |          |   W    | half | Adds 2 "reflected" bytes to CRC                     |
+|         |          |   W    | byte | Adds 1 "reflected" byte to CRC                      |
+|---------|----------|--------|------|-----------------------------------------------------|
 
 The register CRC holds the current value of the CRC and it has to be written with its initial 
 value before doing any CRC calculation. For some communication standards its initial value is 
@@ -46,7 +46,7 @@ zero, but there are cases where the initial value is nonzero. This register is 3
 and for CRC polynomials with less than 32 bits its contents have to be MSB aligned. As an 
 example lets consider the initialization for the CRC16 of the X25 standard:
 
-CRC=0xFFFF0000;		// Initial value (MSB justified)
+CRC=0xFFFF0000;		// Initial value (MSB aligned)
 
 In this case only 16 bits are going to be used and the lower 16 bits should be zero.
 
@@ -55,36 +55,36 @@ aligned. Following the same example, the CRC polynomial for X25 is x^16+x^12+x^5
 and that means the POLY value is 0x1021 (bits #12, #5, and #0 as ones), but it has to be MSB 
 aligned:
 
-POLY=0x1021<<16;		// Polynomial (MSB justified)
+POLY=0x10210000;		// Polynomial (MSB aligned)
 
 After CRC and POLY are initialized, any write to DATA, or DATAREFL, registers will start 
 the CRC processing. But these registers can be written as 8, 16, or 32-bit values, and therefore 
-the number of clock cycles used depends on the width of the data. When the CRC is busy the bit #0 
-of the STAT register is zero, meaning we have to wait for the result. Writes to the DATAREFL 
-register results in the order of the bits being reversed (LSB being sent first). This is what
-happens in the X25 example:
+the number of clock cycles used depends on the width of the data. While the CRC is busy the bit #0
+of the STAT register (READY flag) is zero, meaning we have to wait for the result. Writes to the 
+DATAREFL register results in the order of the bits being reversed (LSB being sent first). This is 
+what happens in the X25 example:
 
-DATAREFL32=0x125555ff;   // Little-endian bytes: 0xff, 0x55, 0x55, 0x12
-while ((STAT&1)==0);
+DATAREFL32=0x125555ff;   // Little-endian bytes. Byte order: 0xff, 0x55, 0x55, 0x12
+while ((STAT&1)==0);     // 32 clock cycles
 DATAREFL8=0x55;          // Single byte: 0x55
-while ((STAT&1)==0);
+while ((STAT&1)==0);     // 8 clock cycles
 
-In this example a 32-bit, little endian, data, is sent first to the DATA_reflected register. Then 
-we wait until the data is processed, and next, a single byte more is also sent to the same register
+In this example a 32-bit, little endian, data, is sent first to the DATAREFL register. Then we
+wait until the data is processed, and next, a single byte more is also sent to the same register
 but using an 8-bit data width. The data width for these registers is defined using the following 
-code (listing for DATA register only):
+code (listing for DATAREFL register only):
 
-\#define DATA32 (*(volatile uint32_t*)(CRCBASE+8)) 
-\#define DATA16 (*(volatile uint16_t*)(CRCBASE+8)) 
-\#define DATA8  (*(volatile  uint8_t*)(CRCBASE+8))
+- #define DATAREFL32 (*(volatile uint32_t*)(CRCBASE+0xC)) 
+- #define DATAREFL16 (*(volatile uint16_t*)(CRCBASE+0xC)) 
+- #define DATAREFL8  (*(volatile  uint8_t*)(CRCBASE+0xC))
 
-Here, any value assigned to the DATA32 symbol will generate an “store_word” instruction, while 
-assignments to DATA16 or DATA8 will result in “store_halfword” or “store_byte” instructions 
+Here, any value assigned to the DATAREFL32 symbol will generate an “store_word” instruction, while
+assignments to DATAREFL16 or DATAREFL8 will result in “store_halfword” or “store_byte” instructions
 respectively. 
 
 At the end the CRC result can be read from both the CRC and CRCREFL registers. In the last case 
-the result is LSB justified. This is the case for the X25 standard,where the resulting CRC must 
-also have its bits inverted:
+the result is LSB aligned. This is the case for the X25 standard,where the resulting CRC must also
+have its bits inverted:
 
 _printf("crc=0x%04x\n",CRCREFL ^ 0xFFFF);
 
