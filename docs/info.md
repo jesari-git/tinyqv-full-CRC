@@ -92,9 +92,10 @@ _printf("crc=0x%04x\n",CRCREFL ^ 0xFFFF);
 
 Not "reflected" CRCs (MSB goes first)
 
-- 1  Write the CRC register with the initial value (for example with 0)
-- 2  Write the POLY register with the desired polynomial. The valued has to be right aligned. For
-     instance, for the typical 16-bit CRC (x^16+x^12+x^5+x^0) its value is: 0x10210000
+- 1  Write the CRC register with the initial value (for example with 0). The value has to be MSB
+     aligned.
+- 2  Write the POLY register with the desired polynomial. The value has to be MSB aligned. For
+     instance, for the typical 16-bit CRC (x^16+x^12+x^5+x^0) the value is: 0x10210000
 - 3  Write the data to the DATA register using the appropriate width. For instance, if 8-bit values
      have to be added to the CRC use the SB (Store Byte) instruction by means of a write to the
      DATA8 register.
@@ -104,9 +105,10 @@ Not "reflected" CRCs (MSB goes first)
 
 "Reflected" CRCs (LSB goes first)
 
-- 1  Write the CRC register with the initial value (for example with 0)
-- 2  Write the POLY register with the desired polynomial. The valued has to be right aligned. For
-     instance, for the typical 16-bit CRC (x^16+x^12+x^5+x^0) its value is: 0x10210000
+- 1  Write the CRC register with the initial value (for example with 0). The value has to be MSB
+     aligned.
+- 2  Write the POLY register with the desired polynomial. The value has to be MSB aligned. For
+     instance, for the typical 16-bit CRC (x^16+x^12+x^5+x^0) the value is: 0x10210000
 - 3  Write the data to the DATAREFL register using the appropriate width. For instance, if 8-bit 
      values have to be added to the CRC use the SB (Store Byte) instruction by means of a write to 
      the DATAREFL8 register.
