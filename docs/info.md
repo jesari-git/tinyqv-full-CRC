@@ -26,7 +26,7 @@ And, for the programmer's model it has the following registers:
 |---------|----------|--------|------|-----------------------------------------------------|
 | 0x00    | CRC      |  R/W   | word | Current CRC value, MSB aligned, LSBs padded with 0s |
 |---------|----------|--------|------|-----------------------------------------------------|
-| 0x04    | STAT     |   R    | any  | Bit #0: CRC ready if one                            |
+| 0x04    | STAT     |   R    | any  | Bit #0: CRC READY if one                            |
 |         | POLY     |   W    | word | CRC polynomial, MSB aligned, LSBs padded with 0s    |
 |---------|----------|--------|------|-----------------------------------------------------|
 | 0x08    | CRCREFL  |   R    | word | Current CRC "reflected" (LSBs <--> MSBs)            |
