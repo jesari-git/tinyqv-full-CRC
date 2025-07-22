@@ -46,7 +46,7 @@ zero, but there are cases where the initial value is nonzero. This register is 3
 and for CRC polynomials with less than 32 bits its contents have to be MSB aligned. As an 
 example lets consider the initialization for the CRC16 of the X25 standard:
 
-CRC=0xFFFF0000;		// Initial value (MSB aligned)
+- CRC=0xFFFF0000;		// Initial value (MSB aligned)
 
 In this case only 16 bits are going to be used and the lower 16 bits should be zero.
 
@@ -55,7 +55,7 @@ aligned. Following the same example, the CRC polynomial for X25 is x^16+x^12+x^5
 and that means the POLY value is 0x1021 (bits #12, #5, and #0 as ones), but it has to be MSB 
 aligned:
 
-POLY=0x10210000;		// Polynomial (MSB aligned)
+- POLY=0x10210000;		// Polynomial (MSB aligned)
 
 After CRC and POLY are initialized, any write to DATA, or DATAREFL, registers will start 
 the CRC processing. But these registers can be written as 8, 16, or 32-bit values, and therefore 
@@ -64,10 +64,10 @@ of the STAT register (READY flag) is zero, meaning we have to wait for the resul
 DATAREFL register results in the order of the bits being reversed (LSB being sent first). This is 
 what happens in the X25 example:
 
-DATAREFL32=0x125555ff;   // Little-endian bytes. Byte order: 0xff, 0x55, 0x55, 0x12
-while ((STAT&1)==0);     // 32 clock cycles
-DATAREFL8=0x55;          // Single byte: 0x55
-while ((STAT&1)==0);     // 8 clock cycles
+- DATAREFL32=0x125555ff;   // Little-endian bytes. Byte order: 0xff, 0x55, 0x55, 0x12
+- while ((STAT&1)==0);     // 32 clock cycles
+- DATAREFL8=0x55;          // Single byte: 0x55
+- while ((STAT&1)==0);     // 8 clock cycles
 
 In this example a 32-bit, little endian, data, is sent first to the DATAREFL register. Then we
 wait until the data is processed, and next, a single byte more is also sent to the same register
@@ -86,7 +86,7 @@ At the end the CRC result can be read from both the CRC and CRCREFL registers. I
 the result is LSB aligned. This is the case for the X25 standard,where the resulting CRC must also
 have its bits inverted:
 
-_printf("crc=0x%04x\n",CRCREFL ^ 0xFFFF);
+- _printf("crc=0x%04x\n",CRCREFL ^ 0xFFFF);
 
 ## How to test
 
