@@ -29,10 +29,10 @@ module tt_um_tqv_jesari_CRC (
 );
 	// changing the bus interface to LaRVa's...
 
-	// Chip select: only 32-bit wide reads & writes allowed
+	// Chip select
 	wire cs = (address[1:0]==0) & ((data_write_n!=2'b11) | (data_read_n!=2'b11));
 
-	// write lanes
+	// byte write lanes
 	wire [3:0]bsel;
 	assign bsel[0] = (data_write_n!=2'b11);
 	assign bsel[1] = (data_write_n==2'b01) | (data_write_n==2'b10);
@@ -72,18 +72,18 @@ endmodule
 
 module CRC (
 	input clk,
-	input reset,
+	input reset,	// Async, just to avoid Xs during simulation
 	input cs,		// Chip Select
-	input [1:0]rs,	// register select
+	input [1:0]rs,	// register select (address)
 	input [3:0]wrl,	// Write Lanes
-	input [31:0]d,
-	output [31:0]q
+	input [31:0]d,	// input data bus
+	output [31:0]q  // output data bus
 );
 
 ///////////////////////////////////////
 // registers
 
-reg [31:0]sh;		// Data shift register
+reg [31:0]sh;	// Data shift register
 reg [31:0]crc;	// CRC register
 reg [31:0]poly;	// CRC polynomial
 reg [ 5:0]cnt;	// Bit counter
@@ -99,8 +99,9 @@ reg [ 5:0]cnt;	// Bit counter
 
 wire wr=cs & (wrl!=0);	// Write something signal
 
-// Data register (LSB byte first for 32 and 16 bit writes)
+// Data shift register (Little-endian byte order for non-reflected values)
 // Don't care values in LSBs for 16-bit and 8-bit writes
+// Reverse bit order for "reflected" data
 wire datawr=    wr & (rs==2'b10);
 wire reflectwr= wr & (rs==2'b11);
 always @(posedge clk)
@@ -111,7 +112,7 @@ always @(posedge clk)
 	 	  d[24],d[25],d[26],d[27],d[28],d[29],d[30],d[31] }:
 	 	{d[7:0],d[15:8],d[23:16],d[31:24]} ):
 	  {sh[30:0],1'bx};
-// Bit counter. Starts with 31, 15 or 7, depending on write lanes.
+// Bit downcounter. Starts with 31, 15 or 7, depending on write lanes.
 always @(posedge clk or posedge reset)
 	if (reset) cnt<=0; else
 		if (datawr|reflectwr) cnt<={1'b0,wrl[3],wrl[1],wrl[0],wrl[0],wrl[0]};
